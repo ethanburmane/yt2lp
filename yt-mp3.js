@@ -6,11 +6,9 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { execSync, spawn } from 'child_process';
 
-// For proper file paths in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Parse command line arguments
 function parseArgs() {
   const args = process.argv.slice(2);
   const params = {
@@ -25,8 +23,15 @@ function parseArgs() {
     if (arg === '-h' || arg === '--help') {
       params.help = true;
     } else if (arg === '-t' || arg === '--title') {
-      if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
-        params.title = args[++i];
+      if (i + 1 < args.length) {
+        const nextArg = args[i + 1];
+        if (!nextArg.startsWith('-')) {
+          params.title = nextArg;
+          i++;
+        } else {
+          console.error('Error: --title option requires a folder name');
+          process.exit(1);
+        }
       } else {
         console.error('Error: --title option requires a folder name');
         process.exit(1);
@@ -39,7 +44,6 @@ function parseArgs() {
   return params;
 }
 
-// Show help
 function showHelp() {
   console.log(`
 YouTube to MP3 Downloader - Extract songs from YouTube videos
@@ -60,7 +64,6 @@ Note:
   `);
 }
 
-// Check if youtube-dl is installed
 function checkYoutubeDl() {
   try {
     const result = execSync('which youtube-dl || which yt-dlp', { encoding: 'utf8' });
@@ -75,7 +78,6 @@ function checkYoutubeDl() {
   }
 }
 
-// Check if ffmpeg is installed
 function checkFfmpeg() {
   try {
     execSync('which ffmpeg', { encoding: 'utf8' });
@@ -88,11 +90,9 @@ function checkFfmpeg() {
   }
 }
 
-// Parse timestamp in various formats to seconds
 function timeToSeconds(timeString) {
   if (!timeString) return 0;
   
-  // Handle YouTube duration format (PT1H2M3S)
   if (timeString.startsWith('PT')) {
     const hours = timeString.match(/(\d+)H/);
     const minutes = timeString.match(/(\d+)M/);
@@ -103,20 +103,16 @@ function timeToSeconds(timeString) {
            (seconds ? parseInt(seconds[1]) : 0);
   }
   
-  // Handle colon-separated format (HH:MM:SS or MM:SS)
   if (timeString.includes(':')) {
     const parts = timeString.split(':').map(Number);
     
     if (parts.length === 3) {
-      // Format: HH:MM:SS
       return parts[0] * 3600 + parts[1] * 60 + parts[2];
     } else if (parts.length === 2) {
-      // Format: MM:SS
       return parts[0] * 60 + parts[1];
     }
   }
   
-  // Try to parse as a simple number of seconds
   const seconds = parseFloat(timeString);
   if (!isNaN(seconds)) {
     return seconds;
@@ -126,7 +122,6 @@ function timeToSeconds(timeString) {
   return 0;
 }
 
-// Format seconds to HH:MM:SS
 function formatTime(seconds) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -139,22 +134,20 @@ function formatTime(seconds) {
   }
 }
 
-// Download a complete video first, then use ffmpeg to extract sections
 async function downloadFullVideo(videoUrl, outputDir, ytdlPath) {
   return new Promise((resolve, reject) => {
     const tempFile = path.join(outputDir, `full_video_temp.mp3`);
     
     console.log("Downloading full video audio track...");
     
-    // Build command with format options that work with both youtube-dl and yt-dlp
     const args = [
       videoUrl,
       '--extract-audio',
-      '--audio-format', 'mp3',  // Use mp3 which is widely supported
+      '--audio-format', 'mp3',
       '--audio-quality', '0',
       '--no-playlist',
       '--no-warnings',
-      '--no-keep-video',  // Don't keep the video file
+      '--no-keep-video',
       '-o', tempFile
     ];
     
@@ -181,14 +174,13 @@ async function downloadFullVideo(videoUrl, outputDir, ytdlPath) {
         console.log(`Full audio track downloaded successfully`);
         resolve(tempFile);
       } else {
-        // Try with different options if first attempt failed
         console.log("Retrying with simpler options...");
         
         const simpleArgs = [
           videoUrl,
-          '-x',  // Extract audio
+          '-x',  
           '--audio-format', 'mp3',
-          '--no-keep-video', // Don't keep the video file
+          '--no-keep-video',
           '-o', tempFile
         ];
         
@@ -223,7 +215,6 @@ async function downloadFullVideo(videoUrl, outputDir, ytdlPath) {
   });
 }
 
-// Extract a section from the full audio file
 async function extractAudioSection(fullAudioPath, outputPath, startTime, endTime) {
   return new Promise((resolve, reject) => {
     try {
@@ -238,7 +229,6 @@ async function extractAudioSection(fullAudioPath, outputPath, startTime, endTime
       
       console.log(`Extracting segment from ${startTime} to ${endTime}`);
       
-      // Ensure the output path has .mp3 extension
       let finalOutputPath = outputPath;
       if (finalOutputPath.includes('%(ext)s')) {
         finalOutputPath = finalOutputPath.replace(/\.\%\(ext\)s$/, '.mp3');
@@ -246,19 +236,17 @@ async function extractAudioSection(fullAudioPath, outputPath, startTime, endTime
         finalOutputPath += '.mp3';
       }
       
-      // Create output directory if it doesn't exist
       const outputDir = path.dirname(finalOutputPath);
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
       }
       
-      // Build ffmpeg command
       const ffmpegCommand = `ffmpeg -i "${fullAudioPath}" -ss ${startSeconds} -t ${duration} -vn -acodec libmp3lame -q:a 2 "${finalOutputPath}" -y`;
       
       execSync(ffmpegCommand, { 
         encoding: 'utf8',
         stdio: 'inherit',
-        maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+        maxBuffer: 10 * 1024 * 1024 
       });
       
       console.log(`Successfully extracted section`);
@@ -270,15 +258,13 @@ async function extractAudioSection(fullAudioPath, outputPath, startTime, endTime
   });
 }
 
-// Fetch video info using youtube-dl
 function getVideoInfoFromYoutubeDl(videoUrl, ytdlPath) {
   try {
     console.log(`Getting video info from youtube-dl for ${videoUrl}`);
     
-    // Use --dump-json to get metadata in JSON format
     const result = execSync(`${ytdlPath} --dump-json --no-playlist "${videoUrl}"`, {
       encoding: 'utf8',
-      maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+      maxBuffer: 10 * 1024 * 1024
     });
     
     const info = JSON.parse(result);
@@ -299,7 +285,6 @@ function getVideoInfoFromYoutubeDl(videoUrl, ytdlPath) {
   }
 }
 
-// Parse video description for timestamps
 function parseDescription(description) {
   if (!description) {
     console.log("No description provided to parse");
@@ -325,7 +310,6 @@ function parseDescription(description) {
       const timestamp = hasTimestampFirst ? match[1] : match[2];
       const title = hasTimestampFirst ? match[2] : match[1];
       
-      // Convert timestamp to seconds for sorting
       const seconds = timeToSeconds(timestamp);
       
       patternMatches.push({
@@ -342,48 +326,33 @@ function parseDescription(description) {
     }
   }
   
-  // Sort by timestamp
   matches.sort((a, b) => a.seconds - b.seconds);
   return matches;
 }
 
-// Remove the YouTube API function
 
-// Main function
 async function main() {
   try {
-    // Parse command line arguments
     const params = parseArgs();
-    
-    // Show help and exit if requested
     if (params.help || !params.url) {
       showHelp();
       process.exit(params.help ? 0 : 1);
     }
-    
-    console.log("Starting YouTube to MP3 downloader");
-    
-    // Find youtube-dl or yt-dlp executable
+        
     const ytdlPath = checkYoutubeDl();
-    
-    // Check if ffmpeg is installed
     checkFfmpeg();
-    
-    // Define output directory (always in Documents)
+
     const outputDir = path.join(process.env.HOME, "Documents");
     
-    // Get the video ID from URL
     const videoUrl = params.url;
     const regex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
     const match = videoUrl.match(regex);
     const videoId = match ? match[1] : null;
-    
     if (!videoId) {
       console.error("Invalid YouTube URL");
       process.exit(1);
     }
     
-    // Get metadata using youtube-dl/yt-dlp
     let metadata;
     try {
       metadata = await getVideoInfoFromYoutubeDl(videoUrl, ytdlPath);
@@ -393,56 +362,39 @@ async function main() {
     }
     
     const videoTitle = metadata.snippet.title;
-    console.log(`Video title: ${videoTitle}`);
-    
-    // Use custom title if provided, otherwise clean video title for folder name
     let folderName;
     if (params.title) {
       folderName = params.title.trim();
-      console.log(`Using custom folder name: ${folderName}`);
     } else {
       folderName = videoTitle.replace(/[^\w\s]/gi, '').trim();
     }
     
-    // Create base directory for output
     const baseOutputDir = path.join(outputDir, folderName);
     if (!fs.existsSync(baseOutputDir)) {
       fs.mkdirSync(baseOutputDir, { recursive: true });
     }
     
-    // Parse timestamps from description
     const timestamps = parseDescription(metadata.snippet.description);
-    console.log(`Found ${timestamps.length} sections to download`);
-    
-    // First download the complete audio track
-    console.log("Downloading the complete audio track...");
     const fullAudioPath = await downloadFullVideo(videoUrl, baseOutputDir, ytdlPath);
     
     if (timestamps.length === 0) {
       console.log("No timestamps found in description. The full audio has been downloaded.");
       return;
     }
-    
-    // Extract each section from the full audio file
-    console.log("Extracting individual sections...");
-    
+        
     for (let i = 0; i < timestamps.length; i++) {
       const { title, timestamp, seconds } = timestamps[i];
       
-      // Determine end time - either next timestamp or end of video
       let endTime;
       if (i < timestamps.length - 1) {
         endTime = timestamps[i + 1].timestamp;
       } else {
-        // For the last segment, use the video duration
         const durationInSeconds = metadata.contentDetails.duration;
         endTime = formatTime(durationInSeconds);
       }
       
-      // Clean the title for use as filename
       const cleanTitle = title.replace(/[^\w\s]/gi, '').trim();
       const outputPath = path.join(baseOutputDir, `${cleanTitle}.mp3`);
-      
       console.log(`Extracting section ${i+1}/${timestamps.length}: "${cleanTitle}"`);
       
       try {
@@ -451,16 +403,11 @@ async function main() {
         console.error(`Failed to extract section "${cleanTitle}": ${error.message}`);
       }
     }
-    
-    // Clean up all temporary files
     console.log("Cleaning up temporary files...");
     
-    // Remove full audio MP3
     if (fs.existsSync(fullAudioPath)) {
       fs.unlinkSync(fullAudioPath);
     }
-    
-    // Look for and remove any .webm or other temp files
     const files = fs.readdirSync(baseOutputDir);
     for (const file of files) {
       if (file.includes('full_video_temp') || file.includes('.webm') || file.includes('.part') || file.includes('.temp')) {
@@ -482,7 +429,6 @@ async function main() {
   }
 }
 
-// Run the main function
 main().catch(err => {
   console.error("Fatal error:", err);
   process.exit(1);
