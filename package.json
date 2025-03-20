@@ -1,0 +1,13 @@
+{
+    "name": "yt-mp3",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "YouTube to MP3 downloader with timestamp extraction",
+    "main": "yt-mp3.js",
+    "bin": {
+      "yt-mp3": "./yt-mp3.js"
+    },
+    "dependencies": {
+      "dotenv": "^16.3.1"
+    }
+  }
