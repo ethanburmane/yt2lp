@@ -5,14 +5,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { execSync, spawn } from 'child_process';
-import dotenv from 'dotenv';
 
 // For proper file paths in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Load environment variables from .env file
-dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Parse command line arguments
 function parseArgs() {
@@ -61,7 +57,6 @@ Examples:
   
 Note:
   Audio files will be saved to ~/Documents/<folder name>/<song name>.mp3
-  YouTube API key should be stored in .env file as YOUTUBE_API_KEY=your_key
   `);
 }
 
@@ -352,27 +347,7 @@ function parseDescription(description) {
   return matches;
 }
 
-// Get video info from YouTube API
-async function getVideoInfoFromApi(videoId, apiKey) {
-  try {
-    const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${apiKey}&part=snippet,contentDetails,statistics,status`;
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.items && data.items.length > 0) {
-      return data.items[0];
-    } else {
-      throw new Error("No video found with the provided ID");
-    }
-  } catch (error) {
-    console.error("Error fetching video metadata from API:", error);
-    throw error;
-  }
-}
+// Remove the YouTube API function
 
 // Main function
 async function main() {
@@ -387,9 +362,6 @@ async function main() {
     }
     
     console.log("Starting YouTube to MP3 downloader");
-    
-    // Load API key from environment variables
-    const apiKey = process.env.YOUTUBE_API_KEY;
     
     // Find youtube-dl or yt-dlp executable
     const ytdlPath = checkYoutubeDl();
@@ -411,21 +383,13 @@ async function main() {
       process.exit(1);
     }
     
-    // Get metadata - try with youtube-dl first
+    // Get metadata using youtube-dl/yt-dlp
     let metadata;
     try {
       metadata = await getVideoInfoFromYoutubeDl(videoUrl, ytdlPath);
     } catch (ytdlError) {
-      console.log("Trying YouTube API...");
-      if (!apiKey) {
-        console.error("YouTube API key not found in .env file. Create a .env file with YOUTUBE_API_KEY=your_key");
-        process.exit(1);
-      }
-      try {
-        metadata = await getVideoInfoFromApi(videoId, apiKey);
-      } catch (apiError) {
-        throw new Error("Could not get video information");
-      }
+      console.error("Failed to get video info:", ytdlError.message);
+      throw new Error("Could not get video information. Please check the URL and try again.");
     }
     
     const videoTitle = metadata.snippet.title;
