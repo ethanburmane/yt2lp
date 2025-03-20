@@ -70,10 +70,7 @@ function checkYoutubeDl() {
     return result.trim();
   } catch (error) {
     console.error('Error: youtube-dl or yt-dlp is not installed.');
-    console.log('Please install it with:');
-    console.log('  brew install youtube-dl');
-    console.log('or');
-    console.log('  brew install yt-dlp');
+    console.log('run ./setup.bash');
     process.exit(1);
   }
 }
@@ -84,8 +81,7 @@ function checkFfmpeg() {
     return true;
   } catch (error) {
     console.error('Error: ffmpeg is not installed.');
-    console.log('Please install it with:');
-    console.log('  brew install ffmpeg');
+    console.log('run ./setup.bash');
     process.exit(1);
   }
 }
@@ -329,7 +325,6 @@ function parseDescription(description) {
   matches.sort((a, b) => a.seconds - b.seconds);
   return matches;
 }
-
 
 async function main() {
   try {
