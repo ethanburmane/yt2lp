@@ -14,7 +14,8 @@ function parseArgs() {
   const params = {
     url: null,
     help: false,
-    title: null
+    artist: null,  // Artist parameter
+    album: null    // Album parameter
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -22,18 +23,32 @@ function parseArgs() {
     
     if (arg === '-h' || arg === '--help') {
       params.help = true;
-    } else if (arg === '-t' || arg === '--title') {
+    } else if (arg === '-a' || arg === '--artist') {
       if (i + 1 < args.length) {
         const nextArg = args[i + 1];
         if (!nextArg.startsWith('-')) {
-          params.title = nextArg;
+          params.artist = nextArg;
           i++;
         } else {
-          console.error('Error: --title option requires a folder name');
+          console.error('Error: --artist option requires a name');
           process.exit(1);
         }
       } else {
-        console.error('Error: --title option requires a folder name');
+        console.error('Error: --artist option requires a name');
+        process.exit(1);
+      }
+    } else if (arg === '-A' || arg === '--album') {
+      if (i + 1 < args.length) {
+        const nextArg = args[i + 1];
+        if (!nextArg.startsWith('-')) {
+          params.album = nextArg;
+          i++;
+        } else {
+          console.error('Error: --album option requires a name');
+          process.exit(1);
+        }
+      } else {
+        console.error('Error: --album option requires a name');
         process.exit(1);
       }
     } else if (!params.url && (arg.includes('youtube.com') || arg.includes('youtu.be'))) {
@@ -46,18 +61,19 @@ function parseArgs() {
 
 function showHelp() {
   console.log(`
-YouTube to LP - Convert YouTube videos and playlists to MP3 files
+YouTube to LP - Convert YouTube videos and playlists to MP3 files with metadata
 
 Usage:
   yt2lp [options] <youtube-url>
 
 Options:
   -h, --help                Show this help message
-  -t, --title <foldername>  Use custom folder name instead of video title
+  -a, --artist <name>       Set the artist name for MP3 metadata
+  -A, --album <name>        Set the album name for MP3 metadata
 
 Examples:
   yt2lp https://www.youtube.com/watch?v=DWuAn6C8Mfc
-  yt2lp --title "Radiohead Live" https://www.youtube.com/watch?v=DWuAn6C8Mfc
+  yt2lp --artist "Radiohead" --album "In Rainbows" https://www.youtube.com/watch?v=DWuAn6C8Mfc
   
 Note:
   Audio files will be saved to ~/Documents/<folder name>/<song name>.mp3
@@ -211,8 +227,70 @@ async function downloadFullVideo(videoUrl, outputDir, ytdlPath) {
   });
 }
 
-async function extractAudioSection(fullAudioPath, outputPath, startTime, endTime) {
+// New function to update MP3 metadata
+async function updateMp3Metadata(filePath, metadata) {
   return new Promise((resolve, reject) => {
+    if (!fs.existsSync(filePath)) {
+      reject(new Error(`File not found: ${filePath}`));
+      return;
+    }
+    
+    console.log(`Updating metadata for ${path.basename(filePath)}`);
+    
+    // Build ffmpeg arguments for metadata
+    const args = [
+      '-i', filePath,
+      '-c:a', 'copy'  // Copy audio stream without re-encoding
+    ];
+    
+    // Add metadata fields - only song, artist and album
+    if (metadata.song) args.push('-metadata', `title=${metadata.song}`);
+    if (metadata.artist) args.push('-metadata', `artist=${metadata.artist}`);
+    if (metadata.album) args.push('-metadata', `album=${metadata.album}`);
+    
+    // Create temporary output file
+    const tempOutput = `${filePath}.temp.mp3`;
+    args.push(tempOutput);
+    
+    // Log the command we're about to run
+    console.log(`Adding metadata with ffmpeg...`);
+    
+    const ffmpeg = spawn('ffmpeg', args);
+    
+    ffmpeg.stdout.on('data', (data) => {
+      const output = data.toString().trim();
+      if (output) console.log(output);
+    });
+    
+    ffmpeg.stderr.on('data', (data) => {
+      // ffmpeg outputs progress to stderr, so we don't treat all of it as errors
+      const output = data.toString().trim();
+      if (output && output.includes('error')) {
+        console.error(`Error: ${output}`);
+      }
+    });
+    
+    ffmpeg.on('close', (code) => {
+      if (code === 0) {
+        // Replace original file with the one containing updated metadata
+        fs.unlinkSync(filePath);
+        fs.renameSync(tempOutput, filePath);
+        console.log(`Successfully updated metadata`);
+        resolve();
+      } else {
+        // Clean up temp file if it exists
+        if (fs.existsSync(tempOutput)) {
+          fs.unlinkSync(tempOutput);
+        }
+        reject(new Error(`ffmpeg process exited with code ${code}`));
+      }
+    });
+  });
+}
+
+// Updated to include metadata support
+async function extractAudioSection(fullAudioPath, outputPath, startTime, endTime, metadata = null) {
+  return new Promise(async (resolve, reject) => {
     try {
       const startSeconds = timeToSeconds(startTime);
       const endSeconds = timeToSeconds(endTime);
@@ -246,6 +324,17 @@ async function extractAudioSection(fullAudioPath, outputPath, startTime, endTime
       });
       
       console.log(`Successfully extracted section`);
+      
+      // Apply metadata if provided
+      if (metadata) {
+        try {
+          await updateMp3Metadata(finalOutputPath, metadata);
+        } catch (metadataError) {
+          console.error(`Warning: Failed to update metadata: ${metadataError.message}`);
+          // Continue despite metadata error - we still have the audio file
+        }
+      }
+      
       resolve(finalOutputPath);
     } catch (error) {
       console.error("Error extracting audio section:", error.message);
@@ -265,11 +354,14 @@ function getVideoInfoFromYoutubeDl(videoUrl, ytdlPath) {
     
     const info = JSON.parse(result);
     
+    // Return an expanded object with channel information if available
     return {
       id: info.id,
       snippet: {
         title: info.title,
-        description: info.description
+        description: info.description,
+        channelTitle: info.uploader || info.channel || "Unknown Artist", // Add channel info
+        publishedAt: info.upload_date || null // Add upload date if available
       },
       contentDetails: {
         duration: info.duration
@@ -357,23 +449,52 @@ async function main() {
     }
     
     const videoTitle = metadata.snippet.title;
-    let folderName;
-    if (params.title) {
-      folderName = params.title.trim();
-    } else {
-      folderName = videoTitle.replace(/[^\w\s]/gi, '').trim();
+    const channelName = metadata.snippet.channelTitle;
+    
+    // Format upload date if available (often in YYYYMMDD format)
+    let uploadYear = new Date().getFullYear().toString(); // Default to current year
+    if (metadata.snippet.publishedAt) {
+      if (metadata.snippet.publishedAt.length >= 4) {
+        uploadYear = metadata.snippet.publishedAt.substring(0, 4);
+      }
     }
+    
+    // Use album name as folder name
+    const albumName = params.album || videoTitle;
+    const folderName = albumName.replace(/[^\w\s]/gi, '').trim();
     
     const baseOutputDir = path.join(outputDir, folderName);
     if (!fs.existsSync(baseOutputDir)) {
       fs.mkdirSync(baseOutputDir, { recursive: true });
     }
     
+    // Set up metadata defaults
+    const artistName = params.artist || channelName;
+    
     const timestamps = parseDescription(metadata.snippet.description);
     const fullAudioPath = await downloadFullVideo(videoUrl, baseOutputDir, ytdlPath);
     
     if (timestamps.length === 0) {
       console.log("No timestamps found in description. The full audio has been downloaded.");
+      
+      // Update metadata for the full audio
+      const fullAudioMetadata = {
+        song: videoTitle,
+        artist: artistName,
+        album: albumName
+      };
+      
+      try {
+        await updateMp3Metadata(fullAudioPath, fullAudioMetadata);
+        // Rename the file to have a nicer name if it's the full video
+        const cleanTitle = videoTitle.replace(/[^\w\s]/gi, '').trim();
+        const renamedPath = path.join(baseOutputDir, `${cleanTitle}.mp3`);
+        fs.renameSync(fullAudioPath, renamedPath);
+        console.log(`Full audio saved as: ${path.basename(renamedPath)}`);
+      } catch (metadataError) {
+        console.error(`Warning: Failed to update metadata: ${metadataError.message}`);
+      }
+      
       return;
     }
         
@@ -392,17 +513,27 @@ async function main() {
       const outputPath = path.join(baseOutputDir, `${cleanTitle}.mp3`);
       console.log(`Extracting section ${i+1}/${timestamps.length}: "${cleanTitle}"`);
       
+      // Create metadata for this track
+      const trackMetadata = {
+        song: title,
+        artist: artistName,
+        album: albumName
+      };
+      
       try {
-        await extractAudioSection(fullAudioPath, outputPath, timestamp, endTime);
+        await extractAudioSection(fullAudioPath, outputPath, timestamp, endTime, trackMetadata);
+        console.log(`Track ${i+1} saved with metadata`);
       } catch (error) {
         console.error(`Failed to extract section "${cleanTitle}": ${error.message}`);
       }
     }
+    
     console.log("Cleaning up temporary files...");
     
     if (fs.existsSync(fullAudioPath)) {
       fs.unlinkSync(fullAudioPath);
     }
+    
     const files = fs.readdirSync(baseOutputDir);
     for (const file of files) {
       if (file.includes('full_video_temp') || file.includes('.webm') || file.includes('.part') || file.includes('.temp')) {
@@ -416,7 +547,7 @@ async function main() {
       }
     }
     
-    console.log("All downloads complete!");
+    console.log("All downloads complete with metadata!");
     
   } catch (error) {
     console.error("Error:", error.message);
