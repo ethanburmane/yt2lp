@@ -87,11 +87,11 @@ echo -e "${GREEN}Installing npm dependencies...${NC}"
 npm install
 
 # make script executable
-echo -e "${GREEN}Making yt-mp3.js executable...${NC}"
-chmod +x yt-mp3.js
+echo -e "${GREEN}Making yt2lp.js executable...${NC}"
+chmod +x yt2lp.js
 
 # install the tool globally
-echo -e "${GREEN}Installing yt-mp3 globally...${NC}"
+echo -e "${GREEN}Installing yt2lp globally...${NC}"
 npm link
 
 echo
@@ -99,6 +99,6 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Installation Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo
-echo -e "You can now use the tool by running: ${YELLOW}yt-mp3 [youtube-url]${NC}"
-echo -e "For help, run: ${YELLOW}yt-mp3 --help${NC}"
+echo -e "You can now use the tool by running: ${YELLOW}yt2lp [youtube-url]${NC}"
+echo -e "For help, run: ${YELLOW}yt2lp --help${NC}"
 echo

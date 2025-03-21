@@ -46,18 +46,18 @@ function parseArgs() {
 
 function showHelp() {
   console.log(`
-YouTube to MP3 Downloader - Extract songs from YouTube videos
+YouTube to LP - Convert YouTube videos and playlists to MP3 files
 
 Usage:
-  yt-mp3 [options] <youtube-url>
+  yt2lp [options] <youtube-url>
 
 Options:
   -h, --help                Show this help message
   -t, --title <foldername>  Use custom folder name instead of video title
 
 Examples:
-  yt-mp3 https://www.youtube.com/watch?v=DWuAn6C8Mfc
-  yt-mp3 --title "Radiohead Live" https://www.youtube.com/watch?v=DWuAn6C8Mfc
+  yt2lp https://www.youtube.com/watch?v=DWuAn6C8Mfc
+  yt2lp --title "Radiohead Live" https://www.youtube.com/watch?v=DWuAn6C8Mfc
   
 Note:
   Audio files will be saved to ~/Documents/<folder name>/<song name>.mp3
