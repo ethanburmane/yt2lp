@@ -1,10 +1,10 @@
 {
-  "name": "yt-mp3",
+  "name": "yt2lp",
   "version": "1.0.0",
   "type": "module",
-  "description": "YouTube to MP3 downloader with timestamp extraction",
-  "main": "yt-mp3.js",
+  "description": "YouTube to Album download",
+  "main": "yt2lp.js",
   "bin": {
-    "yt-mp3": "./yt-mp3.js"
+    "yt2lp": "./yt2lp.js"
   }
 }

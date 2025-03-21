@@ -1,25 +1,24 @@
 #!/bin/bash
 
-# Colors for terminal output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Print header
+# header
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}YouTube MP3 Downloader Setup${NC}"
+echo -e "${GREEN}YouTube to LP Setup${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo
 
-# Check if Node.js is installed
+# check if Node.js is installed
 if ! command -v node &> /dev/null; then
     echo -e "${RED}Error: Node.js is not installed.${NC}"
     echo -e "Please install Node.js first: https://nodejs.org/"
     exit 1
 fi
 
-# Check if npm is installed
+# check if npm is installed
 if ! command -v npm &> /dev/null; then
     echo -e "${RED}Error: npm is not installed.${NC}"
     echo -e "Please install npm first."
@@ -28,7 +27,7 @@ fi
 
 echo -e "${GREEN}✓${NC} Node.js and npm found"
 
-# Check if youtube-dl or yt-dlp is installed
+# check if youtube-dl or yt-dlp is installed
 if command -v youtube-dl &> /dev/null; then
     echo -e "${GREEN}✓${NC} youtube-dl found"
 elif command -v yt-dlp &> /dev/null; then
@@ -57,7 +56,7 @@ else
     fi
 fi
 
-# Check if ffmpeg is installed
+# check if ffmpeg is installed
 if ! command -v ffmpeg &> /dev/null; then
     echo -e "${YELLOW}Warning: ffmpeg is not installed.${NC}"
     echo -e "Would you like to install ffmpeg now? (y/n)"
@@ -87,11 +86,11 @@ echo
 echo -e "${GREEN}Installing npm dependencies...${NC}"
 npm install
 
-# Make script executable
+# make script executable
 echo -e "${GREEN}Making yt-mp3.js executable...${NC}"
 chmod +x yt-mp3.js
 
-# Install the tool globally
+# install the tool globally
 echo -e "${GREEN}Installing yt-mp3 globally...${NC}"
 npm link
 
