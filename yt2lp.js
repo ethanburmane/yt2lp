@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { execSync, spawn } from 'child_process';
+import { genreNameToCode } from './genres.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,8 +15,9 @@ function parseArgs() {
   const params = {
     url: null,
     help: false,
-    artist: null,  // Artist parameter
-    album: null    // Album parameter
+    artist: null,
+    album: null,
+    genre: null
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -51,6 +53,20 @@ function parseArgs() {
         console.error('Error: --album option requires a name');
         process.exit(1);
       }
+    } else if (arg === '-g' || arg === '--genre') {
+      if (i + 1 < args.length) {
+        const nextArg = args[i + 1];
+        if (!nextArg.startsWith('-')) {
+          params.genre = nextArg; // Fixed: was incorrectly setting params.album
+          i++;
+        } else {
+          console.error('Error: --genre option requires a name');
+          process.exit(1);
+        }
+      } else {
+        console.error('Error: --genre option requires a name');
+        process.exit(1);
+      }
     } else if (!params.url && (arg.includes('youtube.com') || arg.includes('youtu.be'))) {
       params.url = arg;
     }
@@ -68,12 +84,14 @@ Usage:
 
 Options:
   -h, --help                Show this help message
-  -a, --artist <name>       Set the artist name for MP3 metadata
-  -A, --album <name>        Set the album name for MP3 metadata
+  -a, --artist <name>       Set the artist name
+  -A, --album <name>        Set the album name
+  -g, --genre <name>        Set the genre
 
 Examples:
   yt2lp https://www.youtube.com/watch?v=DWuAn6C8Mfc
-  yt2lp --artist "Radiohead" --album "In Rainbows" https://www.youtube.com/watch?v=DWuAn6C8Mfc
+  yt2lp --artist "Radiohead" --album "In Rainbows" --genre "Alternative" https://www.youtube.com/watch?v=DWuAn6C8Mfc
+
   
 Note:
   Audio files will be saved to ~/Documents/<folder name>/<song name>.mp3
@@ -243,10 +261,11 @@ async function updateMp3Metadata(filePath, metadata) {
       '-c:a', 'copy'  // Copy audio stream without re-encoding
     ];
     
-    // Add metadata fields - only song, artist and album
+    // Add metadata fields - song, artist, album and genre
     if (metadata.song) args.push('-metadata', `title=${metadata.song}`);
     if (metadata.artist) args.push('-metadata', `artist=${metadata.artist}`);
     if (metadata.album) args.push('-metadata', `album=${metadata.album}`);
+    if (metadata.genre !== undefined) args.push('-metadata', `genre=${metadata.genre}`);
     
     // Create temporary output file
     const tempOutput = `${filePath}.temp.mp3`;
@@ -471,6 +490,13 @@ async function main() {
     // Set up metadata defaults
     const artistName = params.artist || channelName;
     
+    // Handle genre properly using the genreNameToCode function
+    let genreCode = undefined;
+    if (params.genre) {
+      genreCode = genreNameToCode(params.genre);
+      console.log(`Genre "${params.genre}" mapped to code: ${genreCode}`);
+    }
+    
     const timestamps = parseDescription(metadata.snippet.description);
     const fullAudioPath = await downloadFullVideo(videoUrl, baseOutputDir, ytdlPath);
     
@@ -481,7 +507,8 @@ async function main() {
       const fullAudioMetadata = {
         song: videoTitle,
         artist: artistName,
-        album: albumName
+        album: albumName,
+        genre: genreCode // Use the correct genre code
       };
       
       try {
@@ -517,7 +544,8 @@ async function main() {
       const trackMetadata = {
         song: title,
         artist: artistName,
-        album: albumName
+        album: albumName,
+        genre: genreCode // Use the correct genre code
       };
       
       try {
