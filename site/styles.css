@@ -15,7 +15,7 @@ h2 {
 }
 
 .input {
-    width: calc(100% - 101px);
+    width: 100%;
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -31,6 +31,16 @@ h2 {
     border-radius: 4px;
     cursor: pointer;
     font-size: 1em;
+}
+
+.info-input {
+    width: 33%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1em;
+    margin-bottom: 10px;
 }
 
 .note {
