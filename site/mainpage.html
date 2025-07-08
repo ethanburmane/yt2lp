@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<link rel="stylesheet" href="styles.css" />
+</html>
+<body style="margin:0; padding:0; background-color:#b8b8b8;"></body>
+    <main style="max-width: 1000px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 32px;">
+        <div class="header">
+            <h1>yt2lp.com</h1>
+        </div>
+        <h2>YouTube to Album Converter</h2>
+        <!-- <p>Is your favorite concert or unreleased album on YouTube? Paste the URL below and we will convert the video into an MP3 album for your to download.</p> -->
+        <!-- <p>This tool looks for timestamps in the description of the video. If none are provided, you can add your own timestamps before converting.</p> -->
+        <p style="text-align:center">convert YouTube videos into custom MP3 albums for free</p>
+        <form id="urlForm">
+            <input type="text" id="youtubeUrl" placeholder="Enter YouTube URL" required class="input">
+            <button type="submit" class="convert-button" onclick="convertVideo()">Convert</button>
+        </form>
+        <p class="note">Note: This tool is for personal use only. Please respect copyright laws and the rights of content creators.</p>
+        <div id="result"></div>
+
+        <p>To add the downloaded album to Apple Music, follow these steps:</p>
+        <ol>
+            <li>Open the Apple Music app on your computer</li>
+            <li>Drag and drop the downloaded MP3 files into the recently added section of your Apple Music</li>
+            <li>Edit the tracklist order by clicking on the three dots beside each song and clicking "Get Info"</li>
+        </ol>
+    </main>
+</body>

@@ -17,7 +17,8 @@ function parseArgs() {
     help: false,
     artist: null,
     album: null,
-    genre: null
+    genre: null,
+    description: null // New parameter for custom description
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -57,7 +58,7 @@ function parseArgs() {
       if (i + 1 < args.length) {
         const nextArg = args[i + 1];
         if (!nextArg.startsWith('-')) {
-          params.genre = nextArg; // Fixed: was incorrectly setting params.album
+          params.genre = nextArg;
           i++;
         } else {
           console.error('Error: --genre option requires a name');
@@ -65,6 +66,21 @@ function parseArgs() {
         }
       } else {
         console.error('Error: --genre option requires a name');
+        process.exit(1);
+      }
+    } else if (arg === '-d' || arg === '--description') {
+      // Handle new description parameter
+      if (i + 1 < args.length) {
+        const nextArg = args[i + 1];
+        if (!nextArg.startsWith('-')) {
+          params.description = nextArg;
+          i++;
+        } else {
+          console.error('Error: --description option requires a text string');
+          process.exit(1);
+        }
+      } else {
+        console.error('Error: --description option requires a text string');
         process.exit(1);
       }
     } else if (!params.url && (arg.includes('youtube.com') || arg.includes('youtu.be'))) {
@@ -87,10 +103,12 @@ Options:
   -a, --artist <name>       Set the artist name
   -A, --album <name>        Set the album name
   -g, --genre <name>        Set the genre
+  -d, --description <text>  Provide custom timestamp text (for when video description lacks timestamps)
 
 Examples:
   yt2lp https://www.youtube.com/watch?v=DWuAn6C8Mfc
-  yt2lp --artist "Radiohead" --album "In Rainbows" --genre "Alternative" https://www.youtube.com/watch?v=DWuAn6C8Mfc
+  yt2lp --artist "Radiohead" --album "From The Basement: In Rainbows" --genre "Alternative" https://www.youtube.com/watch?v=DWuAn6C8Mfc
+  yt2lp --description "0:00 Intro, 1:24 First Song, 5:32 Second Song" https://www.youtube.com/watch?v=DWuAn6C8Mfc
 
   
 Note:
@@ -497,7 +515,11 @@ async function main() {
       console.log(`Genre "${params.genre}" mapped to code: ${genreCode}`);
     }
     
-    const timestamps = parseDescription(metadata.snippet.description);
+    // Use custom description if provided, otherwise use video description
+    const descriptionToUse = params.description || metadata.snippet.description;
+    console.log("Using " + (params.description ? "custom description" : "video description") + " for timestamps");
+    
+    const timestamps = parseDescription(descriptionToUse);
     const fullAudioPath = await downloadFullVideo(videoUrl, baseOutputDir, ytdlPath);
     
     if (timestamps.length === 0) {
@@ -545,7 +567,7 @@ async function main() {
         song: title,
         artist: artistName,
         album: albumName,
-        genre: genreCode // Use the correct genre code
+        genre: genreCode
       };
       
       try {
