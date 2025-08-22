@@ -1,18 +1,5 @@
-function getGenreCode(genre) {
-    // normalize the genre input
-    genre = genre.toLowerCase().trim();
-    genre = genre.replace(/[-_ ]/g, ' ');
-    genre = genre.replace(/&/g, 'and');
-
-    // check if the genre exists in the mapping
-    if (genre in genreMapping) {
-        return genreMapping[genre];
-    } else {
-        return;
-    }
-}
-
-const genreMapping = {
+// ID3v1 genre codes
+export const genreMapping = {
     'blues': 0,
     'classic rock': 1,
     'country': 2,
