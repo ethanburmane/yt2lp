@@ -36,14 +36,17 @@ Albums without timestamps in the description will not be processed &ndash; use t
 yt2lp [youtube url] --timestamps="[timestamps]"
 ```
 
-# Usage with Apple Music 
+## Usage with Apple Music 
 To upload the albums you convert onto your Apple Music account, open the app on yout desktop, open the *Recently Added* tab, and drag your album folder into the *Recently Added* page
 
-# Usage with Spotify
+## Usage with Spotify
 To upload the albums you convert onto your Spotify Account, you must first allow local files
 
 On the Spotify desktop app, navigate to Settings > Your Library and turn *Show Local Files* on
 
 Next, find *Show songs from*, click *Add Source*, and select the folder with your album
+
+# Future Updates
+In future updates, support for multiple videos and YouTube playlists will be added
 
 More information about uploading local files to Spotify can be found [here](https://support.spotify.com/us/article/local-files/)
