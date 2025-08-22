@@ -8,15 +8,40 @@ import { genreMapping } from './genre.js';
 const YTDlpWrap = YTDlpWrapModule.default;
 const ytdlp = new YTDlpWrap();
 
-const red = '\x1b[31m';
-const green = '\x1b[32m';
-const yellow = '\x1b[33m';
-const reset = '\x1b[0m';
+const GREEN = '\x1b[32m';
+const YELLOW = '\x1b[33m';
+const RED = '\x1b[31m';
+const NC = '\x1b[0m';
 
 const YT2LP_OUTPUT_DIR = process.env.YT2LP_OUTPUT_DIR;
 if (!YT2LP_OUTPUT_DIR) {
-    console.log(red + "YT2LP_OUTPUT_DIR variable must be set" + reset);
+    console.log(RED + "YT2LP_OUTPUT_DIR variable must be set" + NC);
     process.exit(1);
+}
+
+function showHelp() {
+  console.log(`
+YouTube to LP - Convert YouTube videos and playlists to MP3 files with metadata
+
+Usage:
+  yt2lp [options] <youtube-url>
+
+Options:
+  -h, --help                Show this help message
+  -a, --artist <name>       Set the artist name
+  -A, --album <name>        Set the album name
+  -g, --genre <name>        Set the genre
+  -d, --description <text>  Provide custom timestamp text (for when video description lacks timestamps)
+
+Examples:
+  yt2lp https://www.youtube.com/watch?v=DWuAn6C8Mfc
+  yt2lp --artist "Radiohead" --album "From The Basement: In Rainbows" --genre "Alternative" https://www.youtube.com/watch?v=DWuAn6C8Mfc
+  yt2lp --description "0:00 Intro, 1:24 First Song, 5:32 Second Song" https://www.youtube.com/watch?v=DWuAn6C8Mfc
+
+  
+Note:
+  Audio files will be saved to ~/Documents/<folder name>/<song name>.mp3
+  `);
 }
 
 function parseArgs() {
@@ -25,12 +50,12 @@ function parseArgs() {
     // check youtube url
     const url = args[0];
     if (!url) {
-        console.log(red + "You must input a YouTube URL" + reset);
+        console.log(RED + "You must input a YouTube URL" + NC);
         return null;
     }
     const isValidUrl = url.match(/^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/gm);
     if (!isValidUrl) {
-        console.log(red + "You must pass a valid YouTube url" + reset);
+        console.log(RED + "You must pass a valid YouTube url" + NC);
         return null;
     }
 
@@ -43,7 +68,9 @@ function parseArgs() {
     // process flags
     const flags = args.slice(1);
     flags.forEach((flag, index) => {
-        if (flag === '--artist' || flag === '-a') {
+        if (flag === '--help' || flag === '-h') {
+            return flag;
+        } else if (flag === '--artist' || flag === '-a') {
             artist = flags[index + 1];
         } else if (flag === '--album' || flag === '-A') {
             album = flags[index + 1];
@@ -89,7 +116,7 @@ function getGenreCode(genre) {
 
 function parseDescription(description, duration) {    
     if (!description) {
-        console.log(red + "No description provided" + reset);
+        console.log(RED + "No description provided" + NC);
         return [];
     }
 
@@ -126,7 +153,7 @@ function parseDescription(description, duration) {
     
         if (patternMatches.length > 0) {
             matches = patternMatches;
-            console.log(green + `${matches.length} timestamps found` + reset);
+            console.log(GREEN + `${matches.length} timestamps found` + NC);
             break;
         }
     }
@@ -209,6 +236,9 @@ async function main() {
     const args = parseArgs();
     if (!args) {
         process.exit(1);
+    } else if (args === '--help' || args === '-h') {
+        showHelp();
+        return;
     }
 
     // get video data
@@ -220,7 +250,7 @@ async function main() {
         }
         console.log(`Converting ${videoInfo.title}...`);
     } catch (error) {
-        console.log(red + `Error getting video data: ${error}` + red);
+        console.log(RED + `Error getting video data: ${error}` + RED);
         process.exit(1);
     }
 
@@ -249,7 +279,7 @@ async function main() {
 
     // if no timestamps full audio will be saved
     if (timestamps.length === 0) {
-        console.log(yellow + "No timestamps found - exporting as full audio" + reset);
+        console.log(YELLOW + "No timestamps found - exporting as full audio" + NC);
         timestamps = [
             { title: albumMetadata.album, start: 0, end: videoInfo.duration }
         ];
@@ -272,9 +302,9 @@ async function main() {
             '--no-check-certificate',
             '--prefer-free-formats',
         ]);
-        console.log(green + "Full audio file successfully downloaded" + reset);
+        console.log(GREEN + "Full audio file successfully downloaded" + NC);
     } catch (error) {
-        console.log(red + `Error getting the full audio file: ${error}` + reset);
+        console.log(RED + `Error getting the full audio file: ${error}` + NC);
         process.exit(1);
     }
 
@@ -287,9 +317,9 @@ async function main() {
         fs.mkdirSync(albumFolderPath);
     } catch (error) {
         if (error.contains('EEXIST')) {
-            console.log(red + `${albumFolderPath} already exists. Please choose another album name and try again.` + reset)
+            console.log(RED + `${albumFolderPath} already exists. Please choose another album name and try again.` + NC)
         } else {
-            console.log(red + `Could not make album folder: ${error}` + reset);
+            console.log(RED + `Could not make album folder: ${error}` + NC);
         }
         process.exit(1);
     }
@@ -309,15 +339,15 @@ async function main() {
 
         try {
             await extractAudioSection(fullAudioPath, songMetadata, albumFolderPath);
-            console.log(green + `${timestamp.title} successfully extracted!` + reset);
+            console.log(GREEN + `${timestamp.title} successfully extracted!` + NC);
         } catch (error) {
-            console.log(red + `Error extracting ${timestamp.title}: ${error}` + reset);
+            console.log(RED + `Error extracting ${timestamp.title}: ${error}` + NC);
         }
     });
 
     // wait for all songs to be processed
     await Promise.all(promises);
-    console.log(green + 'Album successfully converted!' + reset);
+    console.log(GREEN + 'Album successfully converted!' + NC);
 }
 
 main();
