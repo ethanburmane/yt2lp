@@ -18,7 +18,7 @@ function parseArgs() {
     artist: null,
     album: null,
     genre: null,
-    description: null // New parameter for custom description
+    timestamps: null
   };
 
   for (let i = 0; i < args.length; i++) {

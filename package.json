@@ -5,6 +5,20 @@
   "description": "YouTube to Album download",
   "main": "yt2lp.js",
   "bin": {
-    "yt2lp": "./yt2lp.js"
-  }
+    "yt2lp": "yt2lp.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ethanburmane/yt-to-mp3.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ethanburmane/yt-to-mp3/issues"
+  },
+  "homepage": "https://github.com/ethanburmane/yt-to-mp3#readme"
 }
