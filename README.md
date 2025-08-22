@@ -27,17 +27,23 @@ To convert a video, run
 ```
 yt2lp [youtube url]
 ```
-To add metadata to the video, you can use flags such as `artist`, `album`, `year`, and `genre`
+To add metadata to the video, you can use flags such as `--artist`, `--album`, `--year`, and `--genre`
 ```
 yt2lp [youtube url] --artist="[artist]" --album="[album]" --year="[year]" --genre="[genre]"
 ```
-Albums without timestamps in the description will not be processed &ndash; use the `timestamps` flag to set your own timestamps
+Videos without timestamps in the description will be processed as a single audio file &ndash; use the `--timestamps` flag to set your own timestamps
 ```
 yt2lp [youtube url] --timestamps="[timestamps]"
 ```
 
+Timestamps should be passed in the format of `XX:XX [Song Name] XX:XX [Song Name]` etc...
+
+You can also place your timestamps in a `.txt` file and input the filepath using the `--timestamps` flag
+
 ## Usage with Apple Music 
 To upload the albums you convert onto your Apple Music account, open the app on yout desktop, open the *Recently Added* tab, and drag your album folder into the *Recently Added* page
+
+**NOTE**: if you pass an album name and artist name that match an existing album in your library, Apple Music will add the new songs to the existing album
 
 ## Usage with Spotify
 To upload the albums you convert onto your Spotify Account, you must first allow local files
