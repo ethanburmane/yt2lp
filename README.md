@@ -9,11 +9,10 @@
 
 # Install
 
-To install the CLI, run the setup script in the directory
+To install the CLI, run the setup script
 ```
 ./setup
 ```
-This will install the tool globaly on your machine
 
 # Usage
 
@@ -27,7 +26,7 @@ To convert a video, run
 ```
 yt2lp [youtube url]
 ```
-To add metadata to the video, you can use flags such as `--artist`, `--album`, `--year`, and `--genre`
+To add metadata to the video, you can use flags `--artist`, `--album`, `--year`, and `--genre`
 ```
 yt2lp [youtube url] --artist="[artist]" --album="[album]" --year="[year]" --genre="[genre]"
 ```
@@ -52,7 +51,8 @@ On the Spotify desktop app, navigate to Settings > Your Library and turn *Show L
 
 Next, find *Show songs from*, click *Add Source*, and select the folder with your album
 
+More information about uploading local files to Spotify can be found [here](https://support.spotify.com/us/article/local-files/)
+
 # Future Updates
 In future updates, support for multiple videos and YouTube playlists will be added
 
-More information about uploading local files to Spotify can be found [here](https://support.spotify.com/us/article/local-files/)
