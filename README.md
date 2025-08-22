@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/c6309450-d03e-442b-9f01-aafada122510" height="100px">
+  <img src="https://github.com/user-attachments/assets/972300ff-fd66-41e1-b86c-bc59cf72e133" height="100px">
   <h2>Convert YouTube videos into custom MP3 albums</h2>
 </div>
 
