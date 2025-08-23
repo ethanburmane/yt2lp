@@ -195,7 +195,7 @@ async function extractAudioSection(fullAudioFile, songMetadata, albumFolderPath)
         if (songMetadata.song) args.push('-metadata', `title=${songMetadata.song}`);
         if (songMetadata.album) args.push('-metadata', `album=${songMetadata.album}`);
         if (songMetadata.artist) args.push('-metadata', `artist=${songMetadata.artist}`);
-        if (songMetadata.year) args.push('-metadata', `year=${parseInt(songMetadata.year)}`);
+        if (songMetadata.year) args.push('-metadata', `date=${parseInt(songMetadata.year)}`);
         if (songMetadata.genre) args.push('-metadata', `genre=${songMetadata.genre}`);
         if (songMetadata.track) args.push('-metadata', `track=${songMetadata.track}/${songMetadata.totalTracks}`);
 
