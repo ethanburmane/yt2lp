@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import YTDlpWrapModule from 'yt-dlp-wrap';
 import os from 'os';
 import path from 'path';
@@ -21,31 +23,34 @@ if (!YT2LP_OUTPUT_DIR) {
 
 function showHelp() {
   console.log(`
-YouTube to LP - Convert YouTube videos and playlists to MP3 files with metadata
+YT2LP - covert YouTube videos to custom mp3 albums
 
 Usage:
-  yt2lp [options] <youtube-url>
+  yt2lp [YouTube URL] [options]
 
 Options:
-  -h, --help                Show this help message
-  -a, --artist <name>       Set the artist name
-  -A, --album <name>        Set the album name
-  -g, --genre <name>        Set the genre
-  -d, --description <text>  Provide custom timestamp text (for when video description lacks timestamps)
+  -h, --help                    Show this help message
+  -a, --artist [artist name]    Set the artist name
+  -A, --album [album name]      Set the album name
+  -y, --year [year]             Set the album year
+  -g, --genre [genre]           Set the genre
+  -t, --timestamps <text>       Set custom timestamps (pass in a string or a file path)
 
 Examples:
-  yt2lp https://www.youtube.com/watch?v=DWuAn6C8Mfc
-  yt2lp --artist "Radiohead" --album "From The Basement: In Rainbows" --genre "Alternative" https://www.youtube.com/watch?v=DWuAn6C8Mfc
-  yt2lp --description "0:00 Intro, 1:24 First Song, 5:32 Second Song" https://www.youtube.com/watch?v=DWuAn6C8Mfc
+  yt2lp https://www.youtube.com/watch?v=QrR_gm6RqCo
+  yt2lp https://www.youtube.com/watch?v=QrR_gm6RqCo --artist "Mac Miller" --album "Tiny Desk Concert"
+  yt2lp https://www.youtube.com/watch?v=QrR_gm6RqCo --description "0:00 Intro 0:16 Small Worlds 5:44 What's the Use? 11:42 2009" 
 
-  
-Note:
-  Audio files will be saved to ~/Documents/<folder name>/<song name>.mp3
   `);
 }
 
 function parseArgs() {
     const args = process.argv.slice(2);
+
+    // check for help flag
+    if (args[0] === '--help' || args[0] === '-h') {
+        return args[0];
+    }
 
     // check youtube url
     const url = args[0];
@@ -55,25 +60,26 @@ function parseArgs() {
     }
     const isValidUrl = url.match(/^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/gm);
     if (!isValidUrl) {
-        console.log(RED + "You must pass a valid YouTube url" + NC);
+        console.log(RED + "The first argument passed must be a valid YouTube URL" + NC);
         return null;
     }
 
     // additional args 
     let artist = null;
     let album = null;
+    let year = null;
     let genre = null;
     let timestamps = null;
 
     // process flags
     const flags = args.slice(1);
     flags.forEach((flag, index) => {
-        if (flag === '--help' || flag === '-h') {
-            return flag;
-        } else if (flag === '--artist' || flag === '-a') {
+        if (flag === '--artist' || flag === '-a') {
             artist = flags[index + 1];
         } else if (flag === '--album' || flag === '-A') {
             album = flags[index + 1];
+        } else if (flag === '--year' || flag === '-y') {
+            year = flags[index + 1];
         } else if (flag === '--genre' || flag === '-g') {
             genre = flags[index + 1];
         } else if (flag === '--timestamps' || flag === '-t') {
@@ -85,6 +91,7 @@ function parseArgs() {
         url: url,
         artist: artist,
         album: album,
+        year: year,
         genre: genre,
         timestamps: timestamps
     };    
@@ -188,6 +195,7 @@ async function extractAudioSection(fullAudioFile, songMetadata, albumFolderPath)
         if (songMetadata.song) args.push('-metadata', `title=${songMetadata.song}`);
         if (songMetadata.album) args.push('-metadata', `album=${songMetadata.album}`);
         if (songMetadata.artist) args.push('-metadata', `artist=${songMetadata.artist}`);
+        if (songMetadata.year) args.push('-metadata', `year=${parseInt(songMetadata.year)}`);
         if (songMetadata.genre) args.push('-metadata', `genre=${songMetadata.genre}`);
         if (songMetadata.track) args.push('-metadata', `track=${songMetadata.track}/${songMetadata.totalTracks}`);
 
@@ -228,10 +236,6 @@ async function extractAudioSection(fullAudioFile, songMetadata, albumFolderPath)
 
 async function main() {
 
-    // check output directory
-    // check ytdlp
-    // check ffmpeg
-
     // parse input arguments
     const args = parseArgs();
     if (!args) {
@@ -264,6 +268,7 @@ async function main() {
     const albumMetadata = {
         album: args.album || videoInfo.title || null,
         artist: args.artist || null,
+        year: args.year || videoInfo.year || null,
         genre: genreCode || null,
         totalTracks: null
     };
@@ -272,18 +277,30 @@ async function main() {
     console.log("Searching for timestamps...");
     let timestamps = [];
     if (args.timestamps) {
-        timestamps = parseDescription(args.timestamps, videoInfo.duration);
-    } else {
+        if (args.timestamps.toString().includes('.txt')) {
+            try {
+                const fileText = fs.readFileSync(args.timestamps, 'utf8');
+                timestamps = parseDescription(fileText, videoInfo.duration);
+            } catch (error) {
+                console.log(RED + `Cound not read timestamps from ${args.timestamps}` + NC);
+            }
+        } else {
+            timestamps = parseDescription(args.timestamps, videoInfo.duration);
+        }
+    }
+    
+    // if timestamps failed or not passed, use video timestamps
+    if (timestamps.length === 0){
+        console.log("Searching for timestamps in video description...");
         timestamps = parseDescription(videoInfo.description, videoInfo.duration);
     }
 
-    // if no timestamps full audio will be saved
+    // if no timestamps from video, save full video audio
     if (timestamps.length === 0) {
         console.log(YELLOW + "No timestamps found - exporting as full audio" + NC);
         timestamps = [
             { title: albumMetadata.album, start: 0, end: videoInfo.duration }
         ];
-
     }
     albumMetadata.totalTracks = timestamps.length;
 
@@ -316,7 +333,7 @@ async function main() {
         console.log(`Album being saved at ${albumFolderPath}`);
         fs.mkdirSync(albumFolderPath);
     } catch (error) {
-        if (error.contains('EEXIST')) {
+        if (error.toString().includes('EEXIST')) {
             console.log(RED + `${albumFolderPath} already exists. Please choose another album name and try again.` + NC)
         } else {
             console.log(RED + `Could not make album folder: ${error}` + NC);
