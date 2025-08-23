@@ -3,11 +3,11 @@
   <h2>Convert videos into custom MP3 albums</h2>
 </div>
 
-YT2LP (or yt2lp) is a command-line tool that takes a video URL, converts each section of the video into an mp3 file, and updates each mp3 with tracklist metadata -- esentially making an album from your video. This album can then be placed onto your streaming service to allow you to listen to your favorite live performance, unreleased album, or deep cut, on the go.</div>
+YT2LP (or yt2lp) is a command-line tool that takes a video URL, converts each section of the video into an MP3 file, and updates each MP3 with tracklist metadata -- essentially making an album from your video. This album can then be placed onto your streaming service to allow you to listen to your favorite live performance, unreleased album, or deep cut, on the go.</div>
 
 <div align="center">
 
-  <img src="https://github.com/user-attachments/assets/9e493344-b051-434c-86e6-2e080f280077" height="400px">
+  <img src="https://github.com/user-attachments/assets/9e493344-b051-434c-86e6-2e080f280077">
   
 </div>
 
@@ -40,24 +40,24 @@ Options:
   -A, --album [album name]        Set the album name
   -y, --year [year]               Set the album year
   -g, --genre [genre]             Set the album genre
-  -t, --timestamps [timestamps]   Set custom timestamps (pass in a string or a filepath)
+  -t, --timestamps [timestamps]   Set custom timestamps (pass in a string or a file path)
 ```
 
-Videos without passed timestamps or timestamps in the description will be processed as a single audio file
+Videos without passed timestamps, or timestamps in the description, will be processed as a single audio file
 
-For passing a string using the `--timestamps` flag, the format must be `XX:XX [song name] XX:XX [song name]` etc.
+For passing a string with the `--timestamps` flag, the format must be `XX:XX [song name] XX:XX [song name]` etc.
 
-For passing a filepath using the `--timestamps` flag, the file must have a `.txt` extention and follow the same format
+For passing a file path with the `--timestamps` flag, the file must have a `.txt` extension and follow the same format
 
 **NOTE**: The video URL must be the first argument passed (with the exception of passing the `--help` flag)
 
 ## Usage with Apple Music 
-To upload the albums you convert onto your Apple Music account, open the app on yout desktop, open the *Recently Added* tab, and drag your album folder into the *Recently Added* page
+To upload the albums you convert onto your Apple Music account, open the app on your desktop, open the *Recently Added* tab, and drag your album folder into the *Recently Added* page
 
 **NOTE**: if you pass an album and artist name that exactly match an existing album in your library, Apple Music will add the new songs to the existing album
 
 ## Usage with Spotify
-To upload the albums you convert onto your Spotify Account, you must first allow local files
+To upload the albums you convert onto your Spotify account, you must first allow local files
 
 On the Spotify desktop app, navigate to Settings > Your Library and turn *Show Local Files* on
 
