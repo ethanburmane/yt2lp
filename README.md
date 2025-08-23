@@ -1,13 +1,17 @@
 <div align="center">
   <img src="https://github.com/user-attachments/assets/972300ff-fd66-41e1-b86c-bc59cf72e133" height="100px">
-  <h2>Convert YouTube videos into custom MP3 albums</h2>
+  <h2>Convert videos into custom MP3 albums</h2>
 </div>
 
-# About 
+YT2LP (or yt2lp) is a command-line tool that takes a video URL, converts each section of the video into an mp3 file, and updates each mp3 with tracklist metadata -- esentially making an album from your video. This album can then be placed onto your streaming service to allow you to listen to your favorite live performance, unreleased album, or deep cut, on the go.</div>
 
-**yt2lp** is a CLI tool that allows you to convert a YouTube video into a set of MP3 files based on the videos timestamps
+<div align="center">
 
-# Install
+  <img src="https://github.com/user-attachments/assets/9e493344-b051-434c-86e6-2e080f280077" height="400px">
+  
+</div>
+
+# Installation
 
 Start by cloning this repo and entering the directory
 ```
@@ -23,7 +27,7 @@ To install the CLI globally, run the setup script
 
 ## Running the Tool
 
-To convert a YouTube video, run
+To convert a video, run
 ```
 yt2lp [YouTube URL]
 ```
@@ -45,7 +49,7 @@ For passing a string using the `--timestamps` flag, the format must be `XX:XX [s
 
 For passing a filepath using the `--timestamps` flag, the file must have a `.txt` extention and follow the same format
 
-**NOTE**: The YouTube video URL must be the first argument passed (with the exception of passing the `--help` flag)
+**NOTE**: The video URL must be the first argument passed (with the exception of passing the `--help` flag)
 
 ## Usage with Apple Music 
 To upload the albums you convert onto your Apple Music account, open the app on yout desktop, open the *Recently Added* tab, and drag your album folder into the *Recently Added* page
@@ -62,5 +66,5 @@ Next, find *Show songs from*, click *Add Source*, and select the folder with you
 More information about uploading local files to Spotify can be found [here](https://support.spotify.com/us/article/local-files/)
 
 # Future Updates
-In future updates, support for multiple input videos and YouTube playlists will be added
+In future updates, support for multiple input videos and playlists will be added
 
