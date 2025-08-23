@@ -43,13 +43,19 @@ Options:
   -t, --timestamps [timestamps]   Set custom timestamps (pass in a string or a file path)
 ```
 
+**NOTE**: The video URL must be the first argument passed (with the exception of passing the `--help` flag)
+
+### Genres
+
+For a list of all genres supported, look in the `genre.js` file, or go [here](https://en.wikipedia.org/wiki/List_of_ID3v1_genres)
+
+### Timestamps
+
 Videos without passed timestamps, or timestamps in the description, will be processed as a single audio file
 
 For passing a string with the `--timestamps` flag, the format must be `XX:XX [song name] XX:XX [song name]` etc.
 
 For passing a file path with the `--timestamps` flag, the file must have a `.txt` extension and follow the same format
-
-**NOTE**: The video URL must be the first argument passed (with the exception of passing the `--help` flag)
 
 ## Usage with Apple Music 
 To upload the albums you convert onto your Apple Music account, open the app on your desktop, open the *Recently Added* tab, and drag your album folder into the *Recently Added* page
