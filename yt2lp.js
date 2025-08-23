@@ -1,430 +1,370 @@
 #!/usr/bin/env node
 
-import fs from 'fs';
+import YTDlpWrapModule from 'yt-dlp-wrap';
+import os from 'os';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import { execSync, spawn } from 'child_process';
+import fs from 'fs';
+import { spawn } from 'child_process';
+import { genreMapping } from './genre.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const YTDlpWrap = YTDlpWrapModule.default;
+const ytdlp = new YTDlpWrap();
 
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const params = {
-    url: null,
-    help: false,
-    title: null
-  };
+const GREEN = '\x1b[32m';
+const YELLOW = '\x1b[33m';
+const RED = '\x1b[31m';
+const NC = '\x1b[0m';
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    
-    if (arg === '-h' || arg === '--help') {
-      params.help = true;
-    } else if (arg === '-t' || arg === '--title') {
-      if (i + 1 < args.length) {
-        const nextArg = args[i + 1];
-        if (!nextArg.startsWith('-')) {
-          params.title = nextArg;
-          i++;
-        } else {
-          console.error('Error: --title option requires a folder name');
-          process.exit(1);
-        }
-      } else {
-        console.error('Error: --title option requires a folder name');
-        process.exit(1);
-      }
-    } else if (!params.url && (arg.includes('youtube.com') || arg.includes('youtu.be'))) {
-      params.url = arg;
-    }
-  }
-
-  return params;
+const YT2LP_OUTPUT_DIR = process.env.YT2LP_OUTPUT_DIR;
+if (!YT2LP_OUTPUT_DIR) {
+    console.log(RED + "YT2LP_OUTPUT_DIR variable must be set" + NC);
+    process.exit(1);
 }
 
 function showHelp() {
   console.log(`
-YouTube to LP - Convert YouTube videos and playlists to MP3 files
+YT2LP - covert YouTube videos to custom mp3 albums
 
 Usage:
-  yt2lp [options] <youtube-url>
+  yt2lp [YouTube URL] [options]
 
 Options:
-  -h, --help                Show this help message
-  -t, --title <foldername>  Use custom folder name instead of video title
+  -h, --help                    Show this help message
+  -a, --artist [artist name]    Set the artist name
+  -A, --album [album name]      Set the album name
+  -y, --year [year]             Set the album year
+  -g, --genre [genre]           Set the genre
+  -t, --timestamps <text>       Set custom timestamps (pass in a string or a file path)
 
 Examples:
-  yt2lp https://www.youtube.com/watch?v=DWuAn6C8Mfc
-  yt2lp --title "Radiohead Live" https://www.youtube.com/watch?v=DWuAn6C8Mfc
-  
-Note:
-  Audio files will be saved to ~/Documents/<folder name>/<song name>.mp3
+  yt2lp https://www.youtube.com/watch?v=QrR_gm6RqCo
+  yt2lp https://www.youtube.com/watch?v=QrR_gm6RqCo --artist "Mac Miller" --album "Tiny Desk Concert"
+  yt2lp https://www.youtube.com/watch?v=QrR_gm6RqCo --description "0:00 Intro 0:16 Small Worlds 5:44 What's the Use? 11:42 2009" 
+
   `);
 }
 
-function checkYoutubeDl() {
-  try {
-    const result = execSync('which youtube-dl || which yt-dlp', { encoding: 'utf8' });
-    return result.trim();
-  } catch (error) {
-    console.error('Error: youtube-dl or yt-dlp is not installed.');
-    console.log('run ./setup.bash');
-    process.exit(1);
-  }
-}
+function parseArgs() {
+    const args = process.argv.slice(2);
 
-function checkFfmpeg() {
-  try {
-    execSync('which ffmpeg', { encoding: 'utf8' });
-    return true;
-  } catch (error) {
-    console.error('Error: ffmpeg is not installed.');
-    console.log('run ./setup.bash');
-    process.exit(1);
-  }
-}
-
-function timeToSeconds(timeString) {
-  if (!timeString) return 0;
-  
-  if (timeString.startsWith('PT')) {
-    const hours = timeString.match(/(\d+)H/);
-    const minutes = timeString.match(/(\d+)M/);
-    const seconds = timeString.match(/(\d+)S/);
-    
-    return (hours ? parseInt(hours[1]) * 3600 : 0) + 
-           (minutes ? parseInt(minutes[1]) * 60 : 0) + 
-           (seconds ? parseInt(seconds[1]) : 0);
-  }
-  
-  if (timeString.includes(':')) {
-    const parts = timeString.split(':').map(Number);
-    
-    if (parts.length === 3) {
-      return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    } else if (parts.length === 2) {
-      return parts[0] * 60 + parts[1];
+    // check for help flag
+    if (args[0] === '--help' || args[0] === '-h') {
+        return args[0];
     }
-  }
-  
-  const seconds = parseFloat(timeString);
-  if (!isNaN(seconds)) {
-    return seconds;
-  }
-  
-  console.error('Invalid time format:', timeString);
-  return 0;
+
+    // check youtube url
+    const url = args[0];
+    if (!url) {
+        console.log(RED + "You must input a YouTube URL" + NC);
+        return null;
+    }
+    const isValidUrl = url.match(/^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/gm);
+    if (!isValidUrl) {
+        console.log(RED + "The first argument passed must be a valid YouTube URL" + NC);
+        return null;
+    }
+
+    // additional args 
+    let artist = null;
+    let album = null;
+    let year = null;
+    let genre = null;
+    let timestamps = null;
+
+    // process flags
+    const flags = args.slice(1);
+    flags.forEach((flag, index) => {
+        if (flag === '--artist' || flag === '-a') {
+            artist = flags[index + 1];
+        } else if (flag === '--album' || flag === '-A') {
+            album = flags[index + 1];
+        } else if (flag === '--year' || flag === '-y') {
+            year = flags[index + 1];
+        } else if (flag === '--genre' || flag === '-g') {
+            genre = flags[index + 1];
+        } else if (flag === '--timestamps' || flag === '-t') {
+            timestamps = flags[index + 1];
+        }
+    })
+
+    return {
+        url: url,
+        artist: artist,
+        album: album,
+        year: year,
+        genre: genre,
+        timestamps: timestamps
+    };    
 }
 
-function formatTime(seconds) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  } else {
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-  }
+function timeToSeconds(time) {
+    const parts = time.split(':').map(Number);
+    if (parts.length === 2) {
+        return parts[0] * 60 + parts[1]; // minutes:seconds
+    } else if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2]; // hours:minutes:seconds
+    }
+    throw new Error('Invalid time format');
 }
 
-async function downloadFullVideo(videoUrl, outputDir, ytdlPath) {
-  return new Promise((resolve, reject) => {
-    const tempFile = path.join(outputDir, `full_video_temp.mp3`);
-    
-    console.log("Downloading full video audio track...");
-    
-    const args = [
-      videoUrl,
-      '--extract-audio',
-      '--audio-format', 'mp3',
-      '--audio-quality', '0',
-      '--no-playlist',
-      '--no-warnings',
-      '--no-keep-video',
-      '-o', tempFile
+function getGenreCode(genre) {
+    // normalize the genre input
+    genre = genre.toLowerCase().trim();
+    genre = genre.replace(/[-_ ]/g, ' ');
+    genre = genre.replace(/&/g, 'and');
+
+    // check if the genre exists in the mapping
+    if (genre in genreMapping) {
+        return genreMapping[genre];
+    } else {
+        return null;
+    }
+}
+
+function parseDescription(description, duration) {    
+    if (!description) {
+        console.log(RED + "No description provided" + NC);
+        return [];
+    }
+
+    // timestamp formats
+    const patterns = [
+        /([^\n-]+)\s*-\s*(\d+:\d+(?::\d+)?)/g,
+        /(\d+:\d+(?::\d+)?)\s+([^\n]+)/g,
+        /(\d+:\d+(?::\d+)?)\s*-\s*([^\n]+)/g
     ];
     
-    const download = spawn(ytdlPath, args);
-    let downloadOutput = '';
+    let matches = [];
+    let match;
+    let trackNum = 1;
     
-    download.stdout.on('data', (data) => {
-      const output = data.toString().trim();
-      if (output) {
-        console.log(output);
-      }
-    });
-    
-    download.stderr.on('data', (data) => {
-      const output = data.toString().trim();
-      if (output) {
-        console.error(`Error: ${output}`);
-        downloadOutput += output + '\n';
-      }
-    });
-    
-    download.on('close', (code) => {
-      if (code === 0) {
-        console.log(`Full audio track downloaded successfully`);
-        resolve(tempFile);
-      } else {
-        console.log("Retrying with simpler options...");
+    // find each pattern match 
+    for (const pattern of patterns) {
+        const patternMatches = [];
         
-        const simpleArgs = [
-          videoUrl,
-          '-x',  
-          '--audio-format', 'mp3',
-          '--no-keep-video',
-          '-o', tempFile
+        while ((match = pattern.exec(description)) !== null) {
+            const hasTimestampFirst = /^\d+:\d+/.test(match[1]);
+            const timestamp = hasTimestampFirst ? match[1] : match[2];
+            const title = hasTimestampFirst ? match[2] : match[1];
+            
+            const start = timeToSeconds(timestamp);
+            const end = null;
+            
+            patternMatches.push({
+                title: title.trim(),
+                start,
+                end,
+                track: trackNum++
+            });
+        }
+    
+        if (patternMatches.length > 0) {
+            matches = patternMatches;
+            console.log(GREEN + `${matches.length} timestamps found` + NC);
+            break;
+        }
+    }
+
+    // set end times for each section
+    matches.forEach((match, index) => {
+        if (index + 1 === matches.length) {
+            match.end = duration;
+        } else {
+            match.end = matches[index + 1].start;
+        }
+    });
+    
+    matches.sort((a, b) => a.seconds - b.seconds);
+    return matches;
+}
+
+async function extractAudioSection(fullAudioFile, songMetadata, albumFolderPath) {
+
+    return new Promise((resolve, reject) => {
+
+        const args = [
+            '-i', fullAudioFile,
+            '-ss', songMetadata.start.toString(),
+            '-to', songMetadata.end.toString(),
+            '-vn',
+            '-acodec', 'libmp3lame',
+            '-q:a', '2',
         ];
-        
-        const retryDownload = spawn(ytdlPath, simpleArgs);
-        let retryOutput = '';
-        
-        retryDownload.stdout.on('data', (data) => {
-          const output = data.toString().trim();
-          if (output) {
-            console.log(output);
-          }
-        });
-        
-        retryDownload.stderr.on('data', (data) => {
-          const output = data.toString().trim();
-          if (output) {
-            console.error(`Error: ${output}`);
-            retryOutput += output + '\n';
-          }
-        });
-        
-        retryDownload.on('close', (retryCode) => {
-          if (retryCode === 0) {
-            console.log(`Full audio track downloaded successfully`);
-            resolve(tempFile);
-          } else {
-            reject(new Error(`Failed to download audio`));
-          }
-        });
-      }
-    });
-  });
-}
 
-async function extractAudioSection(fullAudioPath, outputPath, startTime, endTime) {
-  return new Promise((resolve, reject) => {
-    try {
-      const startSeconds = timeToSeconds(startTime);
-      const endSeconds = timeToSeconds(endTime);
-      const duration = endSeconds - startSeconds;
-      
-      if (duration <= 0) {
-        reject(new Error(`Invalid time range: ${startTime} to ${endTime}`));
-        return;
-      }
-      
-      console.log(`Extracting segment from ${startTime} to ${endTime}`);
-      
-      let finalOutputPath = outputPath;
-      if (finalOutputPath.includes('%(ext)s')) {
-        finalOutputPath = finalOutputPath.replace(/\.\%\(ext\)s$/, '.mp3');
-      } else if (!finalOutputPath.endsWith('.mp3')) {
-        finalOutputPath += '.mp3';
-      }
-      
-      const outputDir = path.dirname(finalOutputPath);
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
-      
-      const ffmpegCommand = `ffmpeg -i "${fullAudioPath}" -ss ${startSeconds} -t ${duration} -vn -acodec libmp3lame -q:a 2 "${finalOutputPath}" -y`;
-      
-      execSync(ffmpegCommand, { 
-        encoding: 'utf8',
-        stdio: 'inherit',
-        maxBuffer: 10 * 1024 * 1024 
-      });
-      
-      console.log(`Successfully extracted section`);
-      resolve(finalOutputPath);
-    } catch (error) {
-      console.error("Error extracting audio section:", error.message);
-      reject(error);
-    }
-  });
-}
+        // set metadata
+        if (songMetadata.song) args.push('-metadata', `title=${songMetadata.song}`);
+        if (songMetadata.album) args.push('-metadata', `album=${songMetadata.album}`);
+        if (songMetadata.artist) args.push('-metadata', `artist=${songMetadata.artist}`);
+        if (songMetadata.year) args.push('-metadata', `date=${parseInt(songMetadata.year)}`);
+        if (songMetadata.genre) args.push('-metadata', `genre=${songMetadata.genre}`);
+        if (songMetadata.track) args.push('-metadata', `track=${songMetadata.track}/${songMetadata.totalTracks}`);
 
-function getVideoInfoFromYoutubeDl(videoUrl, ytdlPath) {
-  try {
-    console.log(`Getting video info from youtube-dl for ${videoUrl}`);
-    
-    const result = execSync(`${ytdlPath} --dump-json --no-playlist "${videoUrl}"`, {
-      encoding: 'utf8',
-      maxBuffer: 10 * 1024 * 1024
-    });
-    
-    const info = JSON.parse(result);
-    
-    return {
-      id: info.id,
-      snippet: {
-        title: info.title,
-        description: info.description
-      },
-      contentDetails: {
-        duration: info.duration
-      }
-    };
-  } catch (error) {
-    console.error("Error fetching video info from youtube-dl:", error.message);
-    throw error;
-  }
-}
+        // generate song audio file path
+        const cleanSong = songMetadata.song.replace(/[^\w\s]/gi, '').trim();
+        const songAudioPath = path.join(albumFolderPath, `${cleanSong}.mp3`);
 
-function parseDescription(description) {
-  if (!description) {
-    console.log("No description provided to parse");
-    return [];
-  }
-  
-  console.log("Parsing description for timestamps...");
-  
-  const patterns = [
-    /([^\n-]+)\s*-\s*(\d+:\d+(?::\d+)?)/g,
-    /(\d+:\d+(?::\d+)?)\s+([^\n]+)/g,
-    /(\d+:\d+(?::\d+)?)\s*-\s*([^\n]+)/g
-  ];
-  
-  let matches = [];
-  let match;
-  
-  for (const pattern of patterns) {
-    const patternMatches = [];
-    
-    while ((match = pattern.exec(description)) !== null) {
-      const hasTimestampFirst = /^\d+:\d+/.test(match[1]);
-      const timestamp = hasTimestampFirst ? match[1] : match[2];
-      const title = hasTimestampFirst ? match[2] : match[1];
-      
-      const seconds = timeToSeconds(timestamp);
-      
-      patternMatches.push({
-        title: title.trim(),
-        timestamp,
-        seconds
-      });
-    }
-    
-    if (patternMatches.length > 0) {
-      matches = patternMatches;
-      console.log(`Found ${matches.length} timestamps using pattern`);
-      break;
-    }
-  }
-  
-  matches.sort((a, b) => a.seconds - b.seconds);
-  return matches;
+        args.push(songAudioPath);
+        args.push('-y'); // overwrite output file if it exists
+
+        const ffmpeg = spawn('ffmpeg', args);
+
+        ffmpeg.stdout.on('data', (data) => {
+            const output = data.toString().trim();
+            if (output) console.log(output);
+        });
+
+        ffmpeg.stderr.on('data', (data) => {
+            const output = data.toString().trim();
+            if (output && output.includes('error')) {
+                reject(new Error(output));
+            }
+        });
+
+        ffmpeg.on('close', (code) => {
+            if (code === 0) {
+                resolve(songAudioPath);
+            } else {
+                reject(new Error(`ffmpeg process failed with code ${code}`));
+            }
+        });
+
+        ffmpeg.on('error', (error) => {
+            reject(error);
+        });
+    })
 }
 
 async function main() {
-  try {
-    const params = parseArgs();
-    if (params.help || !params.url) {
-      showHelp();
-      process.exit(params.help ? 0 : 1);
-    }
-        
-    const ytdlPath = checkYoutubeDl();
-    checkFfmpeg();
 
-    const outputDir = path.join(process.env.HOME, "Documents");
-    
-    const videoUrl = params.url;
-    const regex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const match = videoUrl.match(regex);
-    const videoId = match ? match[1] : null;
-    if (!videoId) {
-      console.error("Invalid YouTube URL");
-      process.exit(1);
+    // parse input arguments
+    const args = parseArgs();
+    if (!args) {
+        process.exit(1);
+    } else if (args === '--help' || args === '-h') {
+        showHelp();
+        return;
     }
-    
-    let metadata;
+
+    // get video data
+    let videoInfo;
     try {
-      metadata = await getVideoInfoFromYoutubeDl(videoUrl, ytdlPath);
-    } catch (ytdlError) {
-      console.error("Failed to get video info:", ytdlError.message);
-      throw new Error("Could not get video information. Please check the URL and try again.");
-    }
-    
-    const videoTitle = metadata.snippet.title;
-    let folderName;
-    if (params.title) {
-      folderName = params.title.trim();
-    } else {
-      folderName = videoTitle.replace(/[^\w\s]/gi, '').trim();
-    }
-    
-    const baseOutputDir = path.join(outputDir, folderName);
-    if (!fs.existsSync(baseOutputDir)) {
-      fs.mkdirSync(baseOutputDir, { recursive: true });
-    }
-    
-    const timestamps = parseDescription(metadata.snippet.description);
-    const fullAudioPath = await downloadFullVideo(videoUrl, baseOutputDir, ytdlPath);
-    
-    if (timestamps.length === 0) {
-      console.log("No timestamps found in description. The full audio has been downloaded.");
-      return;
-    }
-        
-    for (let i = 0; i < timestamps.length; i++) {
-      const { title, timestamp, seconds } = timestamps[i];
-      
-      let endTime;
-      if (i < timestamps.length - 1) {
-        endTime = timestamps[i + 1].timestamp;
-      } else {
-        const durationInSeconds = metadata.contentDetails.duration;
-        endTime = formatTime(durationInSeconds);
-      }
-      
-      const cleanTitle = title.replace(/[^\w\s]/gi, '').trim();
-      const outputPath = path.join(baseOutputDir, `${cleanTitle}.mp3`);
-      console.log(`Extracting section ${i+1}/${timestamps.length}: "${cleanTitle}"`);
-      
-      try {
-        await extractAudioSection(fullAudioPath, outputPath, timestamp, endTime);
-      } catch (error) {
-        console.error(`Failed to extract section "${cleanTitle}": ${error.message}`);
-      }
-    }
-    console.log("Cleaning up temporary files...");
-    
-    if (fs.existsSync(fullAudioPath)) {
-      fs.unlinkSync(fullAudioPath);
-    }
-    const files = fs.readdirSync(baseOutputDir);
-    for (const file of files) {
-      if (file.includes('full_video_temp') || file.includes('.webm') || file.includes('.part') || file.includes('.temp')) {
-        const filePath = path.join(baseOutputDir, file);
-        try {
-          fs.unlinkSync(filePath);
-          console.log(`Removed temporary file: ${file}`);
-        } catch (error) {
-          console.error(`Error removing ${file}: ${error.message}`);
+        videoInfo = await ytdlp.getVideoInfo(args.url)
+        if (!videoInfo) {
+            return null;
         }
-      }
+        console.log(`Converting ${videoInfo.title}...`);
+    } catch (error) {
+        console.log(RED + `Error getting video data: ${error}` + RED);
+        process.exit(1);
+    }
+
+    // get genre code
+    let genreCode = null;
+    if (args.genre) {
+        genreCode = await getGenreCode(args.genre);
+    }
+
+    // set album metadata
+    const albumMetadata = {
+        album: args.album || videoInfo.title || null,
+        artist: args.artist || null,
+        year: args.year || videoInfo.year || null,
+        genre: genreCode || null,
+        totalTracks: null
+    };
+
+    // set timestamps
+    console.log("Searching for timestamps...");
+    let timestamps = [];
+    if (args.timestamps) {
+        if (args.timestamps.toString().includes('.txt')) {
+            try {
+                const fileText = fs.readFileSync(args.timestamps, 'utf8');
+                timestamps = parseDescription(fileText, videoInfo.duration);
+            } catch (error) {
+                console.log(RED + `Cound not read timestamps from ${args.timestamps}` + NC);
+            }
+        } else {
+            timestamps = parseDescription(args.timestamps, videoInfo.duration);
+        }
     }
     
-    console.log("All downloads complete!");
-    
-  } catch (error) {
-    console.error("Error:", error.message);
-    process.exit(1);
-  }
+    // if timestamps failed or not passed, use video timestamps
+    if (timestamps.length === 0){
+        console.log("Searching for timestamps in video description...");
+        timestamps = parseDescription(videoInfo.description, videoInfo.duration);
+    }
+
+    // if no timestamps from video, save full video audio
+    if (timestamps.length === 0) {
+        console.log(YELLOW + "No timestamps found - exporting as full audio" + NC);
+        timestamps = [
+            { title: albumMetadata.album, start: 0, end: videoInfo.duration }
+        ];
+    }
+    albumMetadata.totalTracks = timestamps.length;
+
+    // get audio file for full video
+    console.log("Downloading full audio file");
+    const tempDirPath = os.tmpdir();
+    const cleanAlbum = albumMetadata.album.replace(/[^\w\s]/gi, '').trim();
+    const fullAudioPath = path.join(tempDirPath, `${cleanAlbum}.mp3`);
+    try {
+        await ytdlp.execPromise([
+            videoInfo.url,
+            '-x',
+            '--audio-format', 'mp3',
+            '--output', fullAudioPath,
+            '--no-warnings',
+            '--no-check-certificate',
+            '--prefer-free-formats',
+        ]);
+        console.log(GREEN + "Full audio file successfully downloaded" + NC);
+    } catch (error) {
+        console.log(RED + `Error getting the full audio file: ${error}` + NC);
+        process.exit(1);
+    }
+
+    // make directory to place audio files in
+    const albumFolderPath = path.join(YT2LP_OUTPUT_DIR, cleanAlbum);
+
+    // make album folder 
+    try {
+        console.log(`Album being saved at ${albumFolderPath}`);
+        fs.mkdirSync(albumFolderPath);
+    } catch (error) {
+        if (error.toString().includes('EEXIST')) {
+            console.log(RED + `${albumFolderPath} already exists. Please choose another album name and try again.` + NC)
+        } else {
+            console.log(RED + `Could not make album folder: ${error}` + NC);
+        }
+        process.exit(1);
+    }
+
+    // separate audio file by timestamps
+    const promises = timestamps.map(async (timestamp, index) => {
+        console.log(`Processing track ${index + 1}: ${timestamp.title}`);
+        
+        // set song-specific metadata
+        const songMetadata = {
+            ...albumMetadata,
+            song: timestamp.title,
+            track: index + 1,
+            start: timestamp.start,
+            end: timestamp.end
+        };
+
+        try {
+            await extractAudioSection(fullAudioPath, songMetadata, albumFolderPath);
+            console.log(GREEN + `${timestamp.title} successfully extracted!` + NC);
+        } catch (error) {
+            console.log(RED + `Error extracting ${timestamp.title}: ${error}` + NC);
+        }
+    });
+
+    // wait for all songs to be processed
+    await Promise.all(promises);
+    console.log(GREEN + 'Album successfully converted!' + NC);
 }
 
-main().catch(err => {
-  console.error("Fatal error:", err);
-  process.exit(1);
-});
+main();
