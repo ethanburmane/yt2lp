@@ -87,6 +87,14 @@ npm install
 echo -e "${GREEN}Making yt2lp.js executable...${NC}"
 chmod +x yt2lp.js
 
+# check if yt2lp is already installed globally
+if npm list -g yt2lp &> /dev/null; then
+    echo -e "${YELLOW}yt2lp is already installed globally.${NC}"
+    echo -e "${YELLOW}Uninstalling previous version...${NC}"
+    npm unlink -g yt2lp 2>/dev/null || npm uninstall -g yt2lp
+    echo -e "${GREEN}✓${NC} Previous version uninstalled"
+fi
+
 # install the tool globally
 echo -e "${GREEN}Installing yt2lp globally...${NC}"
 npm link

@@ -37,9 +37,11 @@ Options:
   -t, --timestamps <text>       Set custom timestamps (pass in a string or a file path)
 
 Examples:
-  yt2lp https://www.youtube.com/watch?v=QrR_gm6RqCo
-  yt2lp https://www.youtube.com/watch?v=QrR_gm6RqCo --artist "Mac Miller" --album "Tiny Desk Concert"
-  yt2lp https://www.youtube.com/watch?v=QrR_gm6RqCo --description "0:00 Intro 0:16 Small Worlds 5:44 What's the Use? 11:42 2009" 
+  yt2lp "https://www.youtube.com/watch?v=QrR_gm6RqCo"
+  yt2lp "https://www.youtube.com/watch?v=QrR_gm6RqCo" --artist "Mac Miller" --album "Tiny Desk Concert"
+  yt2lp "https://www.youtube.com/watch?v=QrR_gm6RqCo&list=PLxA687tYuMWg" --timestamps "0:00 Intro 0:16 Small Worlds" 
+
+${YELLOW}Note: Always wrap YouTube URLs in quotes to prevent input issues${NC}
 
   `);
 }
@@ -52,12 +54,15 @@ function parseArgs() {
         return args[0];
     }
 
+    console.log(args);
+
     // check youtube url
     const url = args[0];
     if (!url) {
         console.log(RED + "You must input a YouTube URL" + NC);
         return null;
     }
+    
     const isValidUrl = url.match(/^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/gm);
     if (!isValidUrl) {
         console.log(RED + "The first argument passed must be a valid YouTube URL" + NC);
@@ -254,7 +259,7 @@ async function main() {
         }
         console.log(`Converting ${videoInfo.title}...`);
     } catch (error) {
-        console.log(RED + `Error getting video data: ${error}` + RED);
+        console.log(RED + `Error getting video data: ${error}` + NC);
         process.exit(1);
     }
 
