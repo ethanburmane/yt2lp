@@ -54,8 +54,6 @@ function parseArgs() {
         return args[0];
     }
 
-    console.log(args);
-
     // check youtube url
     const url = args[0];
     if (!url) {
