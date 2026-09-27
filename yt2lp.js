@@ -271,7 +271,7 @@ async function main() {
     const albumMetadata = {
         album: args.album || videoInfo.title || null,
         artist: args.artist || null,
-        year: args.year || videoInfo.year || null,
+        year: args.year || videoInfo.upload_date?.slice(0, 4) || null,
         genre: genreCode || null,
         totalTracks: null
     };
@@ -314,7 +314,7 @@ async function main() {
     const fullAudioPath = path.join(tempDirPath, `${cleanAlbum}.mp3`);
     try {
         await ytdlp.execPromise([
-            videoInfo.url,
+            args.url,
             '-x',
             '--audio-format', 'mp3',
             '--output', fullAudioPath,
