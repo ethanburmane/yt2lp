@@ -251,7 +251,7 @@ async function main() {
     // get video data
     let videoInfo;
     try {
-        videoInfo = await ytdlp.getVideoInfo(args.url)
+        videoInfo = await ytdlp.getVideoInfo([args.url, '-f', 'bestaudio/best'])
         if (!videoInfo) {
             return null;
         }
